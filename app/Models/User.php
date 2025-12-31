@@ -70,6 +70,11 @@ class User extends Authenticatable
         return $this->hasMany(Attendance::class);
     }
 
+    public function permitLetters()
+    {
+        return $this->hasMany(PermitLetter::class);
+    }
+
     public function createdQrSessions()
     {
         return $this->hasMany(QrSession::class, 'created_by');

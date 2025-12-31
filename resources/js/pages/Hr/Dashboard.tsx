@@ -61,14 +61,14 @@ interface Props {
 
 export default function HrDashboard({ attendances, departments, stats, filters }: Props) {
     const [date, setDate] = useState(filters.date);
-    const [departmentId, setDepartmentId] = useState(filters.department_id?.toString() || '');
+    const [departmentId, setDepartmentId] = useState(filters.department_id?.toString() || 'all');
 
     const applyFilters = () => {
         router.get(
             route('hr.dashboard') as string,
             {
                 date,
-                department_id: departmentId || undefined,
+                department_id: departmentId === 'all' ? undefined : departmentId,
             },
             { preserveState: true }
         );
@@ -123,7 +123,7 @@ export default function HrDashboard({ attendances, departments, stats, filters }
                                         <SelectValue placeholder="All Departments" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">All Departments</SelectItem>
+                                        <SelectItem value="all">All Departments</SelectItem>
                                         {departments.map((dept) => (
                                             <SelectItem key={dept.id} value={dept.id.toString()}>
                                                 {dept.name}

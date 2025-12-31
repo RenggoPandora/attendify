@@ -108,9 +108,12 @@ class AttendanceController extends Controller
         $startDate = Carbon::parse($month)->startOfMonth();
         $endDate = Carbon::parse($month)->endOfMonth();
 
-        $usersQuery = User::with(['role', 'department'])
+        $usersQuery = User::with(['roles', 'department', 'permitLetters' => function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('permit_date', [$startDate, $endDate])
+                    ->orderBy('permit_date', 'desc');
+            }])
             ->where('is_active', true)
-            ->whereHas('role', function ($q) {
+            ->whereHas('roles', function ($q) {
                 $q->where('name', 'user');
             });
 

@@ -1,6 +1,7 @@
-import { Head, router } from '@inertiajs/react';
+import { Head, router, Link } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import {
     Select,
     SelectContent,
@@ -9,6 +10,13 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import {
     Table,
     TableBody,
     TableCell,
@@ -16,7 +24,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Download, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, FileSpreadsheet, Eye, FileText } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { useState } from 'react';
 
@@ -27,6 +35,18 @@ interface User {
     department: {
         name: string;
     } | null;
+    permit_letters: PermitLetter[];
+}
+
+interface PermitLetter {
+    id: number;
+    permit_date: string;
+    reason: string;
+    description: string | null;
+    file_name: string;
+    status: 'pending' | 'approved' | 'rejected';
+    created_at: string;
+    rejection_reason: string | null;
 }
 
 interface Stats {
@@ -59,7 +79,8 @@ interface Props {
 
 export default function Recap({ users, departments, currentMonth, filters }: Props) {
     const [month, setMonth] = useState(currentMonth);
-    const [departmentId, setDepartmentId] = useState(filters.department_id?.toString() || '');
+    const [departmentId, setDepartmentId] = useState(filters.department_id?.toString() || 'all');
+    const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
 
     const changeMonth = (offset: number) => {
         const date = new Date(month + '-01');
@@ -74,7 +95,7 @@ export default function Recap({ users, departments, currentMonth, filters }: Pro
             route('hr.recap') as string,
             {
                 month: newMonth || month,
-                department_id: newDeptId || departmentId || undefined,
+                department_id: (newDeptId || departmentId) === 'all' ? undefined : (newDeptId || departmentId),
             },
             { preserveState: true }
         );
@@ -136,7 +157,7 @@ export default function Recap({ users, departments, currentMonth, filters }: Pro
                                         <SelectValue placeholder="All Departments" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">All Departments</SelectItem>
+                                        <SelectItem value="all">All Departments</SelectItem>
                                         {departments.map((dept) => (
                                             <SelectItem key={dept.id} value={dept.id.toString()}>
                                                 {dept.name}
@@ -168,11 +189,12 @@ export default function Recap({ users, departments, currentMonth, filters }: Pro
                                             <TableHead className="text-center">Izin</TableHead>
                                             <TableHead className="text-center">Sakit</TableHead>
                                             <TableHead className="text-center">Alpha</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {users.map(({ user, stats }) => (
-                                            <TableRow key={user.id}>
+                                            <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setSelectedUser({ user, stats })}>
                                                 <TableCell className="font-mono">{user.employee_id}</TableCell>
                                                 <TableCell className="font-medium">{user.name}</TableCell>
                                                 <TableCell>{user.department?.name || '-'}</TableCell>
@@ -192,6 +214,19 @@ export default function Recap({ users, departments, currentMonth, filters }: Pro
                                                 <TableCell className="text-center text-red-600 font-semibold">
                                                     {stats.alpha}
                                                 </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedUser({ user, stats });
+                                                        }}
+                                                    >
+                                                        <Eye className="h-4 w-4 mr-1" />
+                                                        Detail
+                                                    </Button>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -203,6 +238,186 @@ export default function Recap({ users, departments, currentMonth, filters }: Pro
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Employee Detail Modal */}
+                    <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
+                        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Employee Detail</DialogTitle>
+                                <DialogDescription>
+                                    Attendance statistics and permit letters
+                                </DialogDescription>
+                            </DialogHeader>
+                            
+                            {selectedUser && (
+                                <div className="space-y-6">
+                                    {/* Employee Info */}
+                                    <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Name</p>
+                                            <p className="font-semibold">{selectedUser.user.name}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Employee ID</p>
+                                            <p className="font-mono font-semibold">{selectedUser.user.employee_id}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Department</p>
+                                            <p className="font-semibold">{selectedUser.user.department?.name || '-'}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Attendance Stats */}
+                                    <div>
+                                        <h3 className="font-semibold mb-3">Attendance Statistics</h3>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            <Card>
+                                                <CardContent className="pt-4">
+                                                    <p className="text-xs text-muted-foreground">Total Days</p>
+                                                    <p className="text-2xl font-bold">{selectedUser.stats.total_days}</p>
+                                                </CardContent>
+                                            </Card>
+                                            <Card>
+                                                <CardContent className="pt-4">
+                                                    <p className="text-xs text-muted-foreground">Hadir</p>
+                                                    <p className="text-2xl font-bold text-green-600">{selectedUser.stats.hadir}</p>
+                                                </CardContent>
+                                            </Card>
+                                            <Card>
+                                                <CardContent className="pt-4">
+                                                    <p className="text-xs text-muted-foreground">Telat</p>
+                                                    <p className="text-2xl font-bold text-yellow-600">{selectedUser.stats.telat}</p>
+                                                </CardContent>
+                                            </Card>
+                                            <Card>
+                                                <CardContent className="pt-4">
+                                                    <p className="text-xs text-muted-foreground">Izin</p>
+                                                    <p className="text-2xl font-bold text-blue-600">{selectedUser.stats.izin}</p>
+                                                </CardContent>
+                                            </Card>
+                                            <Card>
+                                                <CardContent className="pt-4">
+                                                    <p className="text-xs text-muted-foreground">Sakit</p>
+                                                    <p className="text-2xl font-bold text-orange-600">{selectedUser.stats.sakit}</p>
+                                                </CardContent>
+                                            </Card>
+                                            <Card>
+                                                <CardContent className="pt-4">
+                                                    <p className="text-xs text-muted-foreground">Alpha</p>
+                                                    <p className="text-2xl font-bold text-red-600">{selectedUser.stats.alpha}</p>
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+                                    </div>
+
+                                    {/* Permit Letters */}
+                                    <div>
+                                        <h3 className="font-semibold mb-3 flex items-center gap-2">
+                                            <FileText className="h-5 w-5" />
+                                            Permit Letters
+                                        </h3>
+                                        {selectedUser.user.permit_letters && selectedUser.user.permit_letters.length > 0 ? (
+                                            <div className="space-y-2">
+                                                {selectedUser.user.permit_letters.map((letter) => (
+                                                    <div key={letter.id} className="p-4 border rounded-lg hover:bg-muted/50">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex-1">
+                                                                <div className="flex items-center gap-2 mb-1">
+                                                                    <p className="font-semibold">
+                                                                        {new Date(letter.permit_date).toLocaleDateString('id-ID', {
+                                                                            day: 'numeric',
+                                                                            month: 'long',
+                                                                            year: 'numeric',
+                                                                        })}
+                                                                    </p>
+                                                                    <Badge className={
+                                                                        letter.status === 'pending' ? 'bg-yellow-500' :
+                                                                        letter.status === 'approved' ? 'bg-green-500' : 'bg-red-500'
+                                                                    }>
+                                                                        {letter.status === 'pending' ? 'Pending' :
+                                                                         letter.status === 'approved' ? 'Disetujui' : 'Ditolak'}
+                                                                    </Badge>
+                                                                </div>
+                                                                <p className="text-sm capitalize text-muted-foreground">
+                                                                    {letter.reason}
+                                                                </p>
+                                                                {letter.description && (
+                                                                    <p className="text-sm text-muted-foreground mt-1">
+                                                                        {letter.description}
+                                                                    </p>
+                                                                )}
+                                                                {letter.rejection_reason && (
+                                                                    <p className="text-sm text-red-600 mt-1">
+                                                                        Alasan ditolak: {letter.rejection_reason}
+                                                                    </p>
+                                                                )}
+                                                                <p className="text-xs text-muted-foreground mt-2">
+                                                                    File: {letter.file_name}
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    asChild
+                                                                >
+                                                                    <Link href={route('hr.permit-letters.download', letter.id)}>
+                                                                        <Download className="h-4 w-4" />
+                                                                    </Link>
+                                                                </Button>
+                                                                {letter.status === 'pending' && (
+                                                                    <>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="text-green-600"
+                                                                            onClick={() => {
+                                                                                if (confirm('Setujui surat izin ini?')) {
+                                                                                    router.post(
+                                                                                        route('hr.permit-letters.approve', letter.id),
+                                                                                        {},
+                                                                                        { preserveState: true }
+                                                                                    );
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            Approve
+                                                                        </Button>
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="text-red-600"
+                                                                            onClick={() => {
+                                                                                const reason = prompt('Alasan penolakan:');
+                                                                                if (reason) {
+                                                                                    router.post(
+                                                                                        route('hr.permit-letters.reject', letter.id),
+                                                                                        { rejection_reason: reason },
+                                                                                        { preserveState: true }
+                                                                                    );
+                                                                                }
+                                                                            }}
+                                                                        >
+                                                                            Reject
+                                                                        </Button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-8 text-muted-foreground border rounded-lg">
+                                                <FileText className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                                                <p>Tidak ada surat izin</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
         </AppLayout>

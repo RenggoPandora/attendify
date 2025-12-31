@@ -23,9 +23,9 @@ class ExportController extends Controller
         $startDate = Carbon::parse($month)->startOfMonth();
         $endDate = Carbon::parse($month)->endOfMonth();
 
-        $usersQuery = User::with(['role', 'department'])
+        $usersQuery = User::with(['roles', 'department'])
             ->where('is_active', true)
-            ->whereHas('role', function ($q) {
+            ->whereHas('roles', function ($q) {
                 $q->where('name', 'user');
             });
 

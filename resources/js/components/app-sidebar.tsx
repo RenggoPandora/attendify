@@ -19,7 +19,8 @@ import {
     ClipboardList, 
     History, 
     FileSpreadsheet,
-    ScanLine 
+    ScanLine,
+    FileText
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -109,6 +110,11 @@ export function AppSidebar() {
                     title: 'History',
                     href: route('employee.history'),
                     icon: History,
+                },
+                {
+                    title: 'Surat Izin',
+                    href: route('employee.permit-letters.index'),
+                    icon: FileText,
                 }
             );
         }
