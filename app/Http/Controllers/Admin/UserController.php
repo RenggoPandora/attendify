@@ -23,7 +23,7 @@ class UserController extends Controller
         $departmentId = $request->input('department_id');
         $roleId = $request->input('role_id');
 
-        $query = User::with(['role', 'department']);
+        $query = User::with(['roles', 'department']);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -38,7 +38,9 @@ class UserController extends Controller
         }
 
         if ($roleId) {
-            $query->where('role_id', $roleId);
+            $query->whereHas('roles', function ($q) use ($roleId) {
+                $q->where('roles.id', $roleId);
+            });
         }
 
         $users = $query->orderBy('name')->paginate(20);
@@ -78,7 +80,8 @@ class UserController extends Controller
         $this->authorize('create', User::class);
 
         $validated = $request->validate([
-            'role_id' => 'required|exists:roles,id',
+            'role_ids' => 'required|array|min:1',
+            'role_ids.*' => 'exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
             'employee_id' => 'required|string|unique:users,employee_id',
             'name' => 'required|string|max:255',
@@ -87,10 +90,14 @@ class UserController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $roleIds = $validated['role_ids'];
+        unset($validated['role_ids']);
+
         $validated['password'] = Hash::make($validated['password']);
         $validated['email_verified_at'] = now();
 
-        User::create($validated);
+        $user = User::create($validated);
+        $user->roles()->sync($roleIds);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User created successfully.');
@@ -107,7 +114,7 @@ class UserController extends Controller
         $departments = Department::where('is_active', true)->get();
 
         return Inertia::render('Admin/Users/Edit', [
-            'user' => $user->load('role', 'department'),
+            'user' => $user->load('roles', 'department'),
             'roles' => $roles,
             'departments' => $departments,
         ]);
@@ -121,7 +128,8 @@ class UserController extends Controller
         $this->authorize('update', $user);
 
         $validated = $request->validate([
-            'role_id' => 'required|exists:roles,id',
+            'role_ids' => 'required|array|min:1',
+            'role_ids.*' => 'exists:roles,id',
             'department_id' => 'nullable|exists:departments,id',
             'employee_id' => 'required|string|unique:users,employee_id,' . $user->id,
             'name' => 'required|string|max:255',
@@ -130,6 +138,9 @@ class UserController extends Controller
             'is_active' => 'boolean',
         ]);
 
+        $roleIds = $validated['role_ids'];
+        unset($validated['role_ids']);
+
         if (!empty($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         } else {
@@ -137,6 +148,7 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+        $user->roles()->sync($roleIds);
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User updated successfully.');

@@ -125,14 +125,14 @@ export default function AdminDashboard({ stats, recentAttendances }: Props) {
                             </Card>
                         </Link>
 
-                        <Link href={route('hr.dashboard') as string}>
+                        <Link href={route('admin.attendance.index') as string}>
                             <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <CheckCircle className="h-5 w-5" />
-                                        Attendance
+                                        Attendance Stats
                                     </CardTitle>
-                                    <CardDescription>View attendance</CardDescription>
+                                    <CardDescription>View statistics</CardDescription>
                                 </CardHeader>
                             </Card>
                         </Link>

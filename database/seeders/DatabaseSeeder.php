@@ -52,10 +52,9 @@ class DatabaseSeeder extends Seeder
         $userRole = Role::where('name', 'user')->first();
 
         // Create admin user
-        User::firstOrCreate(
+        $admin = User::firstOrCreate(
             ['email' => 'admin@attendify.local'],
             [
-                'role_id' => $adminRole->id,
                 'department_id' => $itDept->id,
                 'employee_id' => 'EMP001',
                 'name' => 'Admin User',
@@ -64,12 +63,14 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        if ($admin->wasRecentlyCreated) {
+            $admin->roles()->sync([$adminRole->id]);
+        }
 
-        // Create HR user
-        User::firstOrCreate(
+        // Create HR user (with user role - can scan attendance)
+        $hr = User::firstOrCreate(
             ['email' => 'hr@attendify.local'],
             [
-                'role_id' => $hrRole->id,
                 'department_id' => $hrDept->id,
                 'employee_id' => 'EMP002',
                 'name' => 'HR Manager',
@@ -78,12 +79,14 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        if ($hr->wasRecentlyCreated) {
+            $hr->roles()->sync([$hrRole->id, $userRole->id]); // HR + Employee
+        }
 
         // Create test employee users
-        User::firstOrCreate(
+        $employee = User::firstOrCreate(
             ['email' => 'employee@attendify.local'],
             [
-                'role_id' => $userRole->id,
                 'department_id' => $itDept->id,
                 'employee_id' => 'EMP003',
                 'name' => 'Test Employee',
@@ -92,11 +95,13 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        if ($employee->wasRecentlyCreated) {
+            $employee->roles()->sync([$userRole->id]);
+        }
 
-        User::firstOrCreate(
+        $john = User::firstOrCreate(
             ['email' => 'john.doe@attendify.local'],
             [
-                'role_id' => $userRole->id,
                 'department_id' => $financeDept->id,
                 'employee_id' => 'EMP004',
                 'name' => 'John Doe',
@@ -105,12 +110,15 @@ class DatabaseSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        if ($john->wasRecentlyCreated) {
+            $john->roles()->sync([$userRole->id]);
+        }
 
         $this->command->info('✓ Seeded: 3 Roles, 3 Departments, 4 Users');
         $this->command->info('');
         $this->command->info('Login Credentials:');
-        $this->command->info('  Admin:    admin@attendify.local / password');
-        $this->command->info('  HR:       hr@attendify.local / password');
-        $this->command->info('  Employee: employee@attendify.local / password');
+        $this->command->info('  Admin:    admin@attendify.local / password (role: admin)');
+        $this->command->info('  HR:       hr@attendify.local / password (roles: hr + user)');
+        $this->command->info('  Employee: employee@attendify.local / password (role: user)');
     }
 }

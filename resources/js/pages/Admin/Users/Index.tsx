@@ -119,7 +119,13 @@ export default function UsersIndex({ users, filters }: Props) {
                                             <TableCell>{user.name}</TableCell>
                                             <TableCell>{user.email}</TableCell>
                                             <TableCell>
-                                                <Badge variant="outline">{user.role.display_name}</Badge>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {user.roles?.map((role: any) => (
+                                                        <Badge key={role.id} variant="outline">
+                                                            {role.display_name}
+                                                        </Badge>
+                                                    )) || <span className="text-muted-foreground text-sm">No role</span>}
+                                                </div>
                                             </TableCell>
                                             <TableCell>{user.department?.name || '-'}</TableCell>
                                             <TableCell>

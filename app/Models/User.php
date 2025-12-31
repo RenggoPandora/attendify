@@ -19,7 +19,6 @@ class User extends Authenticatable
      * @var list<string>
      */
     protected $fillable = [
-        'role_id',
         'department_id',
         'employee_id',
         'name',
@@ -56,9 +55,9 @@ class User extends Authenticatable
     }
 
     // Relationships
-    public function role()
+    public function roles()
     {
-        return $this->belongsTo(Role::class);
+        return $this->belongsToMany(Role::class)->withTimestamps();
     }
 
     public function department()
@@ -84,21 +83,31 @@ class User extends Authenticatable
     // Role checking helper methods
     public function isAdmin(): bool
     {
-        return $this->role?->name === 'admin';
+        return $this->roles()->where('name', 'admin')->exists();
     }
 
     public function isHr(): bool
     {
-        return $this->role?->name === 'hr';
+        return $this->roles()->where('name', 'hr')->exists();
     }
 
     public function isUser(): bool
     {
-        return $this->role?->name === 'user';
+        return $this->roles()->where('name', 'user')->exists();
     }
 
     public function hasRole(string $role): bool
     {
-        return $this->role?->name === $role;
+        return $this->roles()->where('name', $role)->exists();
+    }
+
+    public function hasAnyRole(array $roles): bool
+    {
+        return $this->roles()->whereIn('name', $roles)->exists();
+    }
+
+    public function hasAllRoles(array $roles): bool
+    {
+        return $this->roles()->whereIn('name', $roles)->count() === count($roles);
     }
 }

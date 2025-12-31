@@ -27,10 +27,18 @@ export function AppSidebar() {
     const { auth } = usePage<SharedData>().props;
     const user = auth.user;
 
-    // Menu berdasarkan role
+    // Helper to check if user has a specific role
+    const hasRole = (roleName: string) => {
+        return user.roles?.some((role: any) => role.name === roleName) ?? false;
+    };
+
+    // Menu berdasarkan role - combine menus if user has multiple roles
     const getMenuItems = (): NavItem[] => {
-        if (user.role?.name === 'admin') {
-            return [
+        const menuItems: NavItem[] = [];
+
+        // Admin menu
+        if (hasRole('admin')) {
+            menuItems.push(
                 {
                     title: 'Dashboard',
                     href: route('admin.dashboard'),
@@ -53,19 +61,24 @@ export function AppSidebar() {
                 },
                 {
                     title: 'Attendance',
-                    href: route('hr.dashboard'),
+                    href: route('admin.attendance.index'),
                     icon: ClipboardList,
-                },
-            ];
-        } else if (user.role?.name === 'hr') {
-            return [
-                {
+                }
+            );
+        }
+
+        // HR menu
+        if (hasRole('hr')) {
+            if (menuItems.length === 0) {
+                menuItems.push({
                     title: 'Dashboard',
                     href: route('hr.dashboard'),
                     icon: LayoutGrid,
-                },
+                });
+            }
+            menuItems.push(
                 {
-                    title: 'Attendance',
+                    title: 'HR Attendance',
                     href: route('hr.attendance.index'),
                     icon: ClipboardList,
                 },
@@ -73,16 +86,20 @@ export function AppSidebar() {
                     title: 'Recap',
                     href: route('hr.recap'),
                     icon: FileSpreadsheet,
-                },
-            ];
-        } else {
-            // Employee menu
-            return [
-                {
+                }
+            );
+        }
+
+        // Employee menu
+        if (hasRole('user')) {
+            if (menuItems.length === 0) {
+                menuItems.push({
                     title: 'Dashboard',
                     href: route('employee.dashboard'),
                     icon: LayoutGrid,
-                },
+                });
+            }
+            menuItems.push(
                 {
                     title: 'Scan QR',
                     href: route('employee.scan'),
@@ -92,9 +109,11 @@ export function AppSidebar() {
                     title: 'History',
                     href: route('employee.history'),
                     icon: History,
-                },
-            ];
+                }
+            );
         }
+
+        return menuItems;
     };
 
     const mainNavItems = getMenuItems();

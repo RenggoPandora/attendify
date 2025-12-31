@@ -38,10 +38,23 @@ export default function CreateUser({ roles, departments }: Props) {
         employee_id: '',
         password: '',
         password_confirmation: '',
-        role_id: '',
+        role_ids: [] as number[],
         department_id: '',
         is_active: true,
     });
+
+    const toggleRole = (roleId: number) => {
+        const currentRoles = [...data.role_ids];
+        const index = currentRoles.indexOf(roleId);
+        
+        if (index > -1) {
+            currentRoles.splice(index, 1);
+        } else {
+            currentRoles.push(roleId);
+        }
+        
+        setData('role_ids', currentRoles);
+    };
 
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
@@ -118,25 +131,27 @@ export default function CreateUser({ roles, departments }: Props) {
                                         )}
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="role_id">Role *</Label>
-                                        <Select
-                                            value={data.role_id}
-                                            onValueChange={(value) => setData('role_id', value)}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue placeholder="Select role" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {roles.map((role) => (
-                                                    <SelectItem key={role.id} value={role.id.toString()}>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label>Roles *</Label>
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 border rounded-md p-4">
+                                            {roles.map((role) => (
+                                                <div key={role.id} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`role-${role.id}`}
+                                                        checked={data.role_ids.includes(role.id)}
+                                                        onCheckedChange={() => toggleRole(role.id)}
+                                                    />
+                                                    <Label
+                                                        htmlFor={`role-${role.id}`}
+                                                        className="text-sm font-normal cursor-pointer"
+                                                    >
                                                         {role.display_name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {errors.role_id && (
-                                            <p className="text-sm text-destructive">{errors.role_id}</p>
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {errors.role_ids && (
+                                            <p className="text-sm text-destructive">{errors.role_ids}</p>
                                         )}
                                     </div>
 

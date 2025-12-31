@@ -31,6 +31,7 @@ class FortifyServiceProvider extends ServiceProvider
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
+        $this->configureRedirects();
     }
 
     /**
@@ -40,6 +41,28 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+    }
+
+    /**
+     * Configure redirects after authentication.
+     */
+    private function configureRedirects(): void
+    {
+        Fortify::redirects('login', function () {
+            $user = auth()->user();
+            
+            // Load roles relationship
+            $user->load('roles');
+            
+            // Redirect based on role priority: admin > hr > user
+            if ($user->isAdmin()) {
+                return route('admin.dashboard');
+            } elseif ($user->isHr()) {
+                return route('hr.dashboard');
+            } else {
+                return route('employee.dashboard');
+            }
+        });
     }
 
     /**

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AttendanceController as AdminAttendanceController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\UserController;
@@ -17,7 +18,7 @@ Route::get('/', function () {
 
     $user = auth()->user();
     
-    // Role-based redirect
+    // Role-based redirect (prioritize admin > hr > user)
     if ($user->isAdmin()) {
         return redirect()->route('admin.dashboard');
     } elseif ($user->isHr()) {
@@ -48,6 +49,9 @@ Route::middleware(['auth', 'role:hr'])->prefix('hr')->name('hr.')->group(functio
 // Admin Routes
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+    
+    // Attendance Stats (Overview only)
+    Route::get('/attendance', [AdminAttendanceController::class, 'index'])->name('attendance.index');
     
     // User Management
     Route::resource('users', UserController::class);
