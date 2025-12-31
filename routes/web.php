@@ -76,9 +76,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/qr-display', function () {
         $qrService = app(\App\Services\QrService::class);
         $activeQrSession = $qrService->getActiveQrSession();
+        $now = \Carbon\Carbon::now();
+        $qrType = $qrService->determineQrType($now);
         
         return Inertia::render('Admin/QrDisplay', [
             'activeQrSession' => $activeQrSession,
+            'qrType' => $qrType,
+            'currentTime' => $now->format('H:i:s'),
         ]);
     })->name('qr-display');
     

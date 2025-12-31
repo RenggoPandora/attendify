@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\DB;
 
 class AttendanceService
 {
+    protected QrService $qrService;
+
+    public function __construct(QrService $qrService)
+    {
+        $this->qrService = $qrService;
+    }
+
     /**
      * Submit attendance via QR scan.
      * 
@@ -19,87 +26,109 @@ class AttendanceService
     public function submitAttendance(User $user, string $qrToken): Attendance
     {
         return DB::transaction(function () use ($user, $qrToken) {
-            // 1. Validate QR session from cache
-            $qrSessionData = $this->validateQrSessionFromCache($qrToken);
+            // 1. Determine QR type based on current time
+            $now = Carbon::now();
+            $qrType = $this->qrService->determineQrType($now);
 
-            // 2. Check if user already submitted today
-            $this->preventDoubleSubmission($user, $qrToken);
+            // 2. Validate QR token matches the expected type
+            $this->qrService->validateQrToken($qrToken, $qrType);
 
-            // 3. Create or update attendance
-            $attendance = $this->recordAttendance($user, $qrToken);
+            // 3. Check if user already submitted this type today
+            $this->preventDoubleSubmission($user, $qrType);
 
-            // 4. Mark QR token as used by this user (cache-based)
+            // 4. Record attendance
+            $attendance = $this->recordAttendance($user, $qrType, $now);
+
+            // 5. Mark QR token as used by this user
             $this->markTokenUsed($user->id, $qrToken);
 
-            // 5. Log the action
-            $this->logAttendance($user, $attendance, 'submit_attendance');
+            // 6. Log the action
+            $this->logAttendance($user, $attendance, "submit_attendance_{$qrType}");
 
             return $attendance->fresh();
         });
     }
 
     /**
-     * Validate QR session from cache.
+     * Prevent double submission for the same QR type.
      */
-    protected function validateQrSessionFromCache(string $token): array
+    protected function preventDoubleSubmission(User $user, string $qrType): void
     {
-        $qrData = Cache::get('active_qr_session');
-
-        if (!$qrData || $qrData['token'] !== $token) {
-            throw new \Exception('QR code tidak valid atau sudah tidak aktif.');
-        }
-
-        $validUntil = Carbon::parse($qrData['valid_until']);
-        
-        if (now()->gt($validUntil)) {
-            throw new \Exception('QR code sudah kadaluarsa.');
-        }
-
-        return $qrData;
-    }
-
-    /**
-     * Prevent double submission within same QR token.
-     */
-    protected function preventDoubleSubmission(User $user, string $token): void
-    {
-        $cacheKey = "attendance_token:{$user->id}:{$token}";
-
-        if (Cache::has($cacheKey)) {
-            throw new \Exception('Anda sudah melakukan absensi dengan QR code ini.');
-        }
-
-        // Check database for today's attendance
         $today = Carbon::today();
-        $existingAttendance = Attendance::where('user_id', $user->id)
+        $attendance = Attendance::where('user_id', $user->id)
             ->where('date', $today)
             ->first();
 
-        if ($existingAttendance && $existingAttendance->check_in) {
-            throw new \Exception('Anda sudah melakukan absensi hari ini.');
+        if ($attendance) {
+            if ($qrType === 'check_in' && $attendance->has_checked_in) {
+                throw new \Exception('Anda sudah melakukan check-in hari ini.');
+            }
+            
+            if ($qrType === 'check_out' && $attendance->has_checked_out) {
+                throw new \Exception('Anda sudah melakukan check-out hari ini.');
+            }
+
+            // Validate check-out requires check-in first
+            if ($qrType === 'check_out' && !$attendance->has_checked_in) {
+                throw new \Exception('Anda harus check-in terlebih dahulu sebelum check-out.');
+            }
+        } else {
+            // No attendance record yet, must be check-in
+            if ($qrType === 'check_out') {
+                throw new \Exception('Anda harus check-in terlebih dahulu sebelum check-out.');
+            }
         }
     }
 
     /**
      * Record attendance (check-in or check-out).
      */
-    protected function recordAttendance(User $user, string $qrToken): Attendance
+    protected function recordAttendance(User $user, string $qrType, Carbon $now): Attendance
     {
         $today = Carbon::today();
-        $now = Carbon::now();
 
-        // Find existing attendance for today
+        // Find or create attendance record
         $attendance = Attendance::firstOrNew([
             'user_id' => $user->id,
             'date' => $today,
         ]);
 
-        // For cache-based system, we only do check-in
-        $attendance->check_in = $now;
-        
-        // Determine status based on time (example: late after 8:30 AM)
-        $lateThreshold = Carbon::today()->setTime(8, 30);
-        $attendance->status = $now->isAfter($lateThreshold) ? 'telat' : 'hadir';
+        if ($qrType === 'check_in') {
+            // Validate: Check-in must be before 16:00
+            $checkInDeadline = Carbon::today()->setTime(16, 0);
+            if ($now->gte($checkInDeadline)) {
+                throw new \Exception('Check-in tidak dapat dilakukan setelah pukul 16:00. Silakan scan QR check-out.');
+            }
+            
+            // Record check-in time
+            $attendance->check_in = $now;
+            $attendance->has_checked_in = true;
+            
+            // Determine status based on time
+            // <= 10:00 = hadir
+            // > 10:00 and < 16:00 = telat
+            $lateThreshold = Carbon::today()->setTime(10, 0);
+            $attendance->status = $now->isAfter($lateThreshold) ? 'telat' : 'hadir';
+            
+        } elseif ($qrType === 'check_out') {
+            // Validate: Check-out must be after 16:00
+            $checkOutStart = Carbon::today()->setTime(16, 0);
+            if ($now->lt($checkOutStart)) {
+                throw new \Exception('Check-out hanya dapat dilakukan setelah pukul 16:00.');
+            }
+            
+            // Validate: Check-out must be after check-in
+            if ($attendance->check_in && $now->lte($attendance->check_in)) {
+                throw new \Exception('Waktu check-out tidak valid. Check-out harus setelah check-in.');
+            }
+            
+            // Record check-out time
+            $attendance->check_out = $now;
+            $attendance->has_checked_out = true;
+            
+            // Status remains as set during check-in (hadir or telat)
+            // Don't change status on check-out
+        }
 
         $attendance->save();
 
@@ -107,7 +136,7 @@ class AttendanceService
     }
 
     /**
-     * Mark QR token as used by this user (cache-based, expires with QR session).
+     * Mark QR token as used by this user (cache-based, expires at end of day).
      */
     protected function markTokenUsed(int $userId, string $token): void
     {
@@ -140,9 +169,34 @@ class AttendanceService
     {
         $oldValues = $attendance->toArray();
 
+        // Validate check-in and check-out times if provided
+        if (isset($data['check_in']) && isset($data['check_out'])) {
+            $checkIn = Carbon::parse($data['check_in']);
+            $checkOut = Carbon::parse($data['check_out']);
+            
+            // Validate: Check-in must be before 16:00
+            $checkInDeadline = Carbon::parse($attendance->date)->setTime(16, 0);
+            if ($checkIn->gte($checkInDeadline)) {
+                throw new \Exception('Waktu check-in tidak valid. Check-in harus sebelum pukul 16:00.');
+            }
+            
+            // Validate: Check-out must be after 16:00
+            $checkOutStart = Carbon::parse($attendance->date)->setTime(16, 0);
+            if ($checkOut->lt($checkOutStart)) {
+                throw new \Exception('Waktu check-out tidak valid. Check-out harus setelah pukul 16:00.');
+            }
+            
+            // Validate: Check-out must be after check-in
+            if ($checkOut->lte($checkIn)) {
+                throw new \Exception('Waktu check-out harus setelah check-in.');
+            }
+        }
+
         $attendance->update([
             'status' => $data['status'] ?? $attendance->status,
             'notes' => $data['notes'] ?? $attendance->notes,
+            'check_in' => $data['check_in'] ?? $attendance->check_in,
+            'check_out' => $data['check_out'] ?? $attendance->check_out,
             'edited_by' => $editor->id,
             'edited_at' => now(),
         ]);

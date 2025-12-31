@@ -25,7 +25,13 @@ class AttendanceController extends Controller
         $date = $request->input('date', Carbon::today()->format('Y-m-d'));
         $departmentId = $request->input('department_id');
         
-        $query = Attendance::with(['user.department', 'user.roles'])
+        $query = Attendance::with([
+                'user.department', 
+                'user.roles',
+                'user.permitLetters' => function ($q) use ($date) {
+                    $q->where('permit_date', $date);
+                }
+            ])
             ->where('date', $date);
 
         if ($departmentId) {

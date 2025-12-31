@@ -56,11 +56,11 @@ class FortifyServiceProvider extends ServiceProvider
             
             // Redirect based on role priority: admin > hr > user
             if ($user->isAdmin()) {
-                return route('admin.dashboard');
+                return '/admin/dashboard';
             } elseif ($user->isHr()) {
-                return route('hr.dashboard');
+                return '/hr/dashboard';
             } else {
-                return route('employee.dashboard');
+                return '/employee/dashboard';
             }
         });
     }

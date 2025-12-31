@@ -41,9 +41,22 @@ class AttendanceController extends Controller
         // Get or generate active QR session on-demand
         $qrService = app(\App\Services\QrService::class);
         $activeQrSession = $qrService->getActiveQrSession();
+        $now = Carbon::now();
+        $qrType = $qrService->determineQrType($now);
+
+        // Get today's attendance to check scan status
+        $user = auth()->user();
+        $todayAttendance = Attendance::where('user_id', $user->id)
+            ->where('date', Carbon::today())
+            ->first();
 
         return Inertia::render('Employee/ScanQr', [
             'activeQrSession' => $activeQrSession,
+            'qrType' => $qrType,
+            'currentTime' => $now->format('H:i:s'),
+            'todayAttendance' => $todayAttendance,
+            'hasCheckedIn' => $todayAttendance?->has_checked_in ?? false,
+            'hasCheckedOut' => $todayAttendance?->has_checked_out ?? false,
         ]);
     }
 

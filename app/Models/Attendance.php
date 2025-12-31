@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Attendance extends Model
 {
@@ -17,6 +18,8 @@ class Attendance extends Model
         'notes',
         'edited_by',
         'edited_at',
+        'has_checked_in',
+        'has_checked_out',
     ];
 
     protected function casts(): array
@@ -42,6 +45,11 @@ class Attendance extends Model
     public function editor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'edited_by');
+    }
+
+    public function permitLetters(): HasMany
+    {
+        return $this->hasMany(PermitLetter::class);
     }
 
     // Helper methods
