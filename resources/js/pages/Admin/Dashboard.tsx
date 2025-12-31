@@ -17,7 +17,6 @@ interface Stats {
     total_users: number;
     total_departments: number;
     today_attendance: number;
-    active_qr_sessions: number;
 }
 
 interface Attendance {
@@ -32,23 +31,12 @@ interface Attendance {
     };
 }
 
-interface QrSession {
-    id: number;
-    type: string;
-    valid_from: string;
-    valid_until: string;
-    creator: {
-        name: string;
-    };
-}
-
 interface Props {
     stats: Stats;
     recentAttendances: Attendance[];
-    activeQrSessions: QrSession[];
 }
 
-export default function AdminDashboard({ stats, recentAttendances, activeQrSessions }: Props) {
+export default function AdminDashboard({ stats, recentAttendances }: Props) {
     return (
         <AppLayout>
             <Head title="Admin Dashboard" />
@@ -64,7 +52,7 @@ export default function AdminDashboard({ stats, recentAttendances, activeQrSessi
                     </div>
 
                     {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Card>
                             <CardHeader className="flex flex-row items-center justify-between pb-2">
                                 <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -97,17 +85,6 @@ export default function AdminDashboard({ stats, recentAttendances, activeQrSessi
                                 <p className="text-xs text-muted-foreground">Recorded today</p>
                             </CardContent>
                         </Card>
-
-                        <Card>
-                            <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                <CardTitle className="text-sm font-medium">Active QR Sessions</CardTitle>
-                                <QrCode className="h-4 w-4 text-muted-foreground" />
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold">{stats.active_qr_sessions}</div>
-                                <p className="text-xs text-muted-foreground">Currently active</p>
-                            </CardContent>
-                        </Card>
                     </div>
 
                     {/* Quick Actions */}
@@ -136,14 +113,14 @@ export default function AdminDashboard({ stats, recentAttendances, activeQrSessi
                             </Card>
                         </Link>
 
-                        <Link href={route('admin.qr-sessions.index') as string}>
+                        <Link href={route('admin.qr-display') as string}>
                             <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                                 <CardHeader>
                                     <CardTitle className="flex items-center gap-2">
                                         <QrCode className="h-5 w-5" />
-                                        QR Sessions
+                                        QR Display
                                     </CardTitle>
-                                    <CardDescription>Generate QR codes</CardDescription>
+                                    <CardDescription>Display QR code</CardDescription>
                                 </CardHeader>
                             </Card>
                         </Link>
@@ -202,51 +179,6 @@ export default function AdminDashboard({ stats, recentAttendances, activeQrSessi
                             ) : (
                                 <div className="text-center py-8">
                                     <p className="text-muted-foreground">No attendance records today</p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Active QR Sessions */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Active QR Sessions</CardTitle>
-                            <CardDescription>Currently active QR codes for attendance</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {activeQrSessions.length > 0 ? (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Type</TableHead>
-                                            <TableHead>Valid From</TableHead>
-                                            <TableHead>Valid Until</TableHead>
-                                            <TableHead>Created By</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {activeQrSessions.map((session) => (
-                                            <TableRow key={session.id}>
-                                                <TableCell>
-                                                    <Badge>{session.type}</Badge>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {new Date(session.valid_from).toLocaleString('id-ID')}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {new Date(session.valid_until).toLocaleString('id-ID')}
-                                                </TableCell>
-                                                <TableCell>{session.creator.name}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            ) : (
-                                <div className="text-center py-8">
-                                    <p className="text-muted-foreground">No active QR sessions</p>
-                                    <Button asChild className="mt-4">
-                                        <Link href={route('admin.qr-sessions.index') as string}>Generate QR Code</Link>
-                                    </Button>
                                 </div>
                             )}
                         </CardContent>

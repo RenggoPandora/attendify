@@ -38,10 +38,9 @@ class AttendanceController extends Controller
      */
     public function scan()
     {
-        // Get current active QR session
-        $activeQrSession = \App\Models\QrSession::where('is_active', true)
-            ->where('valid_until', '>', now())
-            ->first();
+        // Get or generate active QR session on-demand
+        $qrService = app(\App\Services\QrService::class);
+        $activeQrSession = $qrService->getActiveQrSession();
 
         return Inertia::render('Employee/ScanQr', [
             'activeQrSession' => $activeQrSession,

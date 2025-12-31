@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Attendance;
-use App\Models\QrSession;
 use App\Models\User;
 use App\Models\AuditLog;
 use Carbon\Carbon;
@@ -20,14 +19,14 @@ class AttendanceService
     public function submitAttendance(User $user, string $qrToken): Attendance
     {
         return DB::transaction(function () use ($user, $qrToken) {
-            // 1. Validate QR session
-            $qrSession = $this->validateQrSession($qrToken);
+            // 1. Validate QR session from cache
+            $qrSessionData = $this->validateQrSessionFromCache($qrToken);
 
             // 2. Check if user already submitted today
-            $this->preventDoubleSubmission($user, $qrSession);
+            $this->preventDoubleSubmission($user, $qrToken);
 
             // 3. Create or update attendance
-            $attendance = $this->recordAttendance($user, $qrSession);
+            $attendance = $this->recordAttendance($user, $qrToken);
 
             // 4. Mark QR token as used by this user (cache-based)
             $this->markTokenUsed($user->id, $qrToken);
@@ -40,31 +39,31 @@ class AttendanceService
     }
 
     /**
-     * Validate QR session is active and within time window.
+     * Validate QR session from cache.
      */
-    protected function validateQrSession(string $token): QrSession
+    protected function validateQrSessionFromCache(string $token): array
     {
-        $qrSession = QrSession::where('token', $token)
-            ->where('is_active', true)
-            ->first();
+        $qrData = Cache::get('active_qr_session');
 
-        if (!$qrSession) {
+        if (!$qrData || $qrData['token'] !== $token) {
             throw new \Exception('QR code tidak valid atau sudah tidak aktif.');
         }
 
-        if (!$qrSession->isValid()) {
+        $validUntil = Carbon::parse($qrData['valid_until']);
+        
+        if (now()->gt($validUntil)) {
             throw new \Exception('QR code sudah kadaluarsa.');
         }
 
-        return $qrSession;
+        return $qrData;
     }
 
     /**
-     * Prevent double submission within same QR session.
+     * Prevent double submission within same QR token.
      */
-    protected function preventDoubleSubmission(User $user, QrSession $qrSession): void
+    protected function preventDoubleSubmission(User $user, string $token): void
     {
-        $cacheKey = "attendance_token:{$user->id}:{$qrSession->token}";
+        $cacheKey = "attendance_token:{$user->id}:{$token}";
 
         if (Cache::has($cacheKey)) {
             throw new \Exception('Anda sudah melakukan absensi dengan QR code ini.');
@@ -74,10 +73,9 @@ class AttendanceService
         $today = Carbon::today();
         $existingAttendance = Attendance::where('user_id', $user->id)
             ->where('date', $today)
-            ->where('qr_session_id', $qrSession->id)
             ->first();
 
-        if ($existingAttendance) {
+        if ($existingAttendance && $existingAttendance->check_in) {
             throw new \Exception('Anda sudah melakukan absensi hari ini.');
         }
     }
@@ -85,7 +83,7 @@ class AttendanceService
     /**
      * Record attendance (check-in or check-out).
      */
-    protected function recordAttendance(User $user, QrSession $qrSession): Attendance
+    protected function recordAttendance(User $user, string $qrToken): Attendance
     {
         $today = Carbon::today();
         $now = Carbon::now();
@@ -96,17 +94,13 @@ class AttendanceService
             'date' => $today,
         ]);
 
-        // Determine check-in or check-out
-        if ($qrSession->type === 'check_in') {
-            $attendance->check_in = $now;
-            $attendance->qr_session_id = $qrSession->id;
-            
-            // Determine status based on time (example: late after 8:30 AM)
-            $lateThreshold = Carbon::today()->setTime(8, 30);
-            $attendance->status = $now->isAfter($lateThreshold) ? 'telat' : 'hadir';
-        } else {
-            $attendance->check_out = $now;
-        }
+        // For cache-based system, we only do check-in
+        $attendance->check_in = $now;
+        $attendance->qr_token_used = $qrToken; // Store token for reference
+        
+        // Determine status based on time (example: late after 8:30 AM)
+        $lateThreshold = Carbon::today()->setTime(8, 30);
+        $attendance->status = $now->isAfter($lateThreshold) ? 'late' : 'present';
 
         $attendance->save();
 

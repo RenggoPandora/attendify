@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Department;
-use App\Models\QrSession;
 use App\Models\User;
 use Carbon\Carbon;
 use Inertia\Inertia;
@@ -23,7 +22,6 @@ class DashboardController extends Controller
             'total_users' => User::where('is_active', true)->count(),
             'total_departments' => Department::where('is_active', true)->count(),
             'today_attendance' => Attendance::where('date', $today)->count(),
-            'active_qr_sessions' => QrSession::active()->count(),
         ];
 
         $recentAttendances = Attendance::with(['user.department'])
@@ -32,15 +30,9 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
-        $activeQrSessions = QrSession::active()
-            ->with('creator')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
         return Inertia::render('Admin/Dashboard', [
             'stats' => $stats,
             'recentAttendances' => $recentAttendances,
-            'activeQrSessions' => $activeQrSessions,
         ]);
     }
 }

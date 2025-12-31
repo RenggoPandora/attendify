@@ -47,8 +47,8 @@ export function AppSidebar() {
                     icon: Building2,
                 },
                 {
-                    title: 'QR Sessions',
-                    href: route('admin.qr-sessions.index'),
+                    title: 'QR Display',
+                    href: route('admin.qr-display'),
                     icon: QrCode,
                 },
                 {

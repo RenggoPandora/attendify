@@ -42,6 +42,13 @@ export default function ScanQr({ activeQrSession }: Props) {
             const validUntil = new Date(activeQrSession.valid_until).getTime();
             const diff = Math.max(0, Math.floor((validUntil - now) / 1000));
             setTimeLeft(diff);
+
+            // Auto-refresh when expired
+            if (diff === 0) {
+                setTimeout(() => {
+                    router.reload({ only: ['activeQrSession'] });
+                }, 500);
+            }
         };
 
         calculateTimeLeft();

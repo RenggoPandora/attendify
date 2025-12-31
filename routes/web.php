@@ -2,7 +2,6 @@
 
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\DepartmentController;
-use App\Http\Controllers\Admin\QrSessionController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Employee\AttendanceController as EmployeeAttendanceController;
 use App\Http\Controllers\Hr\AttendanceController as HrAttendanceController;
@@ -57,6 +56,15 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::resource('departments', DepartmentController::class);
     
     // QR Session Management
+    Route::get('/qr-display', function () {
+        $qrService = app(\App\Services\QrService::class);
+        $activeQrSession = $qrService->getActiveQrSession();
+        
+        return Inertia::render('Admin/QrDisplay', [
+            'activeQrSession' => $activeQrSession,
+        ]);
+    })->name('qr-display');
+    
     Route::get('/qr-sessions', [QrSessionController::class, 'index'])->name('qr-sessions.index');
     Route::post('/qr-sessions', [QrSessionController::class, 'store'])->name('qr-sessions.store');
     Route::delete('/qr-sessions/{qrSession}', [QrSessionController::class, 'destroy'])->name('qr-sessions.destroy');
