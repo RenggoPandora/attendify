@@ -96,11 +96,10 @@ class AttendanceService
 
         // For cache-based system, we only do check-in
         $attendance->check_in = $now;
-        $attendance->qr_token_used = $qrToken; // Store token for reference
         
         // Determine status based on time (example: late after 8:30 AM)
         $lateThreshold = Carbon::today()->setTime(8, 30);
-        $attendance->status = $now->isAfter($lateThreshold) ? 'late' : 'present';
+        $attendance->status = $now->isAfter($lateThreshold) ? 'telat' : 'hadir';
 
         $attendance->save();
 

@@ -1,8 +1,9 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
     Select,
     SelectContent,
@@ -18,7 +19,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Users, Download, Edit } from 'lucide-react';
+import { ClipboardList, Edit, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
 import { useState } from 'react';
 
@@ -28,6 +29,7 @@ interface Attendance {
     check_in: string | null;
     check_out: string | null;
     status: string;
+    notes: string | null;
     user: {
         name: string;
         employee_id: string;
@@ -59,13 +61,14 @@ interface Props {
     };
 }
 
-export default function HrDashboard({ attendances, departments, stats, filters }: Props) {
+export default function HrAttendance({ attendances, departments, stats, filters }: Props) {
     const [date, setDate] = useState(filters.date);
     const [departmentId, setDepartmentId] = useState(filters.department_id?.toString() || 'all');
+    const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
 
     const applyFilters = () => {
         router.get(
-            route('hr.dashboard') as string,
+            route('hr.attendance.index') as string,
             {
                 date,
                 department_id: departmentId === 'all' ? undefined : departmentId,
@@ -82,27 +85,55 @@ export default function HrDashboard({ attendances, departments, stats, filters }
         alpha: 'bg-red-500',
     };
 
+    const statusLabels: Record<string, string> = {
+        hadir: 'Hadir',
+        telat: 'Telat',
+        izin: 'Izin',
+        sakit: 'Sakit',
+        alpha: 'Alpha',
+    };
+
     return (
         <AppLayout>
-            <Head title="HR Dashboard" />
+            <Head title="HR Attendance Management" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
                     <div className="flex justify-between items-center">
                         <div>
                             <h1 className="text-3xl font-bold flex items-center gap-2">
-                                <Users className="h-8 w-8" />
-                                HR Dashboard
+                                <ClipboardList className="h-8 w-8" />
+                                Attendance Management
                             </h1>
-                            <p className="text-muted-foreground mt-1">Monitor attendance and manage records</p>
+                            <p className="text-muted-foreground mt-1">
+                                View and edit employee attendance records
+                            </p>
                         </div>
                         <Button asChild>
                             <Link href={route('hr.recap') as string}>
-                                <Download className="mr-2 h-4 w-4" />
+                                <FileSpreadsheet className="mr-2 h-4 w-4" />
                                 Monthly Recap
                             </Link>
                         </Button>
                     </div>
+
+                    {/* Flash Messages */}
+                    {flash?.success && (
+                        <Alert className="bg-green-50 border-green-200">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <AlertDescription className="text-green-800">
+                                {flash.success}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    {flash?.error && (
+                        <Alert className="bg-red-50 border-red-200">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertDescription className="text-red-800">
+                                {flash.error}
+                            </AlertDescription>
+                        </Alert>
+                    )}
 
                     {/* Filters */}
                     <Card>
@@ -180,56 +211,75 @@ export default function HrDashboard({ attendances, departments, stats, filters }
                     <Card>
                         <CardHeader>
                             <CardTitle>Attendance Records</CardTitle>
+                            <CardDescription>
+                                Click edit to modify attendance status or add notes
+                            </CardDescription>
                         </CardHeader>
                         <CardContent>
                             {attendances.length > 0 ? (
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Employee</TableHead>
+                                            <TableHead>Employee ID</TableHead>
+                                            <TableHead>Name</TableHead>
                                             <TableHead>Department</TableHead>
                                             <TableHead>Check In</TableHead>
                                             <TableHead>Check Out</TableHead>
                                             <TableHead>Status</TableHead>
-                                            <TableHead>Actions</TableHead>
+                                            <TableHead>Notes</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {attendances.map((attendance) => (
                                             <TableRow key={attendance.id}>
-                                                <TableCell>
-                                                    <div>
-                                                        <div className="font-medium">{attendance.user.name}</div>
-                                                        <div className="text-sm text-muted-foreground">
-                                                            {attendance.user.employee_id}
-                                                        </div>
-                                                    </div>
+                                                <TableCell className="font-mono">
+                                                    {attendance.user.employee_id}
                                                 </TableCell>
-                                                <TableCell>{attendance.user.department?.name || '-'}</TableCell>
+                                                <TableCell className="font-medium">
+                                                    {attendance.user.name}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {attendance.user.department?.name || '-'}
+                                                </TableCell>
                                                 <TableCell>
                                                     {attendance.check_in
-                                                        ? new Date(attendance.check_in).toLocaleTimeString('id-ID', {
-                                                              hour: '2-digit',
-                                                              minute: '2-digit',
-                                                          })
+                                                        ? new Date(attendance.check_in).toLocaleTimeString(
+                                                              'id-ID',
+                                                              {
+                                                                  hour: '2-digit',
+                                                                  minute: '2-digit',
+                                                              }
+                                                          )
                                                         : '-'}
                                                 </TableCell>
                                                 <TableCell>
                                                     {attendance.check_out
-                                                        ? new Date(attendance.check_out).toLocaleTimeString('id-ID', {
-                                                              hour: '2-digit',
-                                                              minute: '2-digit',
-                                                          })
+                                                        ? new Date(attendance.check_out).toLocaleTimeString(
+                                                              'id-ID',
+                                                              {
+                                                                  hour: '2-digit',
+                                                                  minute: '2-digit',
+                                                              }
+                                                          )
                                                         : '-'}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Badge className={statusColors[attendance.status]}>
-                                                        {attendance.status}
+                                                        {statusLabels[attendance.status]}
                                                     </Badge>
                                                 </TableCell>
-                                                <TableCell>
-                                                    <Button variant="ghost" size="sm" asChild>
-                                                        <Link href={route('hr.attendance.edit', attendance.id) as string}>
+                                                <TableCell className="max-w-xs truncate">
+                                                    {attendance.notes || '-'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="outline" size="sm" asChild>
+                                                        <Link
+                                                            href={route(
+                                                                'hr.attendance.edit',
+                                                                attendance.id
+                                                            )}
+                                                        >
                                                             <Edit className="h-4 w-4" />
                                                         </Link>
                                                     </Button>
@@ -239,8 +289,9 @@ export default function HrDashboard({ attendances, departments, stats, filters }
                                     </TableBody>
                                 </Table>
                             ) : (
-                                <div className="text-center py-12">
-                                    <p className="text-muted-foreground">No attendance records found</p>
+                                <div className="text-center py-12 text-muted-foreground">
+                                    <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                                    <p>No attendance records found for this date</p>
                                 </div>
                             )}
                         </CardContent>

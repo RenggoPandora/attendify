@@ -29,7 +29,7 @@ class AttendanceController extends Controller
 
         return Inertia::render('Employee/Dashboard', [
             'todayAttendance' => $todayAttendance,
-            'user' => $user->load('role', 'department'),
+            'user' => $user->load('roles', 'department'),
         ]);
     }
 

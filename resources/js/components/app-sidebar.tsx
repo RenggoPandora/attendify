@@ -79,11 +79,6 @@ export function AppSidebar() {
             }
             menuItems.push(
                 {
-                    title: 'HR Attendance',
-                    href: route('hr.attendance.index'),
-                    icon: ClipboardList,
-                },
-                {
                     title: 'Recap',
                     href: route('hr.recap'),
                     icon: FileSpreadsheet,

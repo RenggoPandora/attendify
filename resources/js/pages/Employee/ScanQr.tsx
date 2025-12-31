@@ -4,9 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { QrCode, AlertCircle, RefreshCw } from 'lucide-react';
+import { QrCode, AlertCircle, Camera, X } from 'lucide-react';
 import AppLayout from '@/layouts/app-layout';
-import { FormEventHandler, useEffect, useState } from 'react';
+import { FormEventHandler, useEffect, useState, useRef } from 'react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 interface QrSession {
     token: string;
@@ -20,6 +21,8 @@ interface Props {
 
 export default function ScanQr({ activeQrSession }: Props) {
     const [timeLeft, setTimeLeft] = useState<number>(0);
+    const [isScanning, setIsScanning] = useState<boolean>(false);
+    const scannerRef = useRef<Html5QrcodeScanner | null>(null);
     const { data, setData, post, processing, errors } = useForm({
         qr_token: '',
     });
@@ -60,9 +63,76 @@ export default function ScanQr({ activeQrSession }: Props) {
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
         post(route('employee.attendance.submit') as string, {
-            onSuccess: () => setData('qr_token', ''),
+            onSuccess: () => {
+                setData('qr_token', '');
+                if (isScanning) {
+                    stopScanner();
+                }
+            },
         });
     };
+
+    const startScanner = () => {
+        setIsScanning(true);
+        
+        setTimeout(() => {
+            const scanner = new Html5QrcodeScanner(
+                "qr-reader",
+                { 
+                    fps: 10,
+                    qrbox: { width: 250, height: 250 },
+                    aspectRatio: 1.0,
+                },
+                false
+            );
+
+            scanner.render(
+                (decodedText) => {
+                    // QR code successfully scanned
+                    console.log('QR Code scanned:', decodedText);
+                    scanner.clear();
+                    setIsScanning(false);
+                    
+                    // Set data dan auto-submit
+                    router.post(
+                        route('employee.attendance.submit') as string,
+                        { qr_token: decodedText },
+                        {
+                            onSuccess: () => {
+                                alert('Absensi berhasil dicatat!');
+                            },
+                            onError: (errors) => {
+                                console.error('Submit error:', errors);
+                                alert('Gagal mencatat absensi: ' + (errors.qr_token || 'Unknown error'));
+                            },
+                        }
+                    );
+                },
+                (error) => {
+                    // Scan error (can be ignored for continuous scanning)
+                    console.log('Scan error (normal):', error);
+                }
+            );
+
+            scannerRef.current = scanner;
+        }, 100);
+    };
+
+    const stopScanner = () => {
+        if (scannerRef.current) {
+            scannerRef.current.clear();
+            scannerRef.current = null;
+        }
+        setIsScanning(false);
+    };
+
+    useEffect(() => {
+        return () => {
+            if (scannerRef.current) {
+                scannerRef.current.clear();
+            }
+        };
+    }, []);
 
     const useCurrentQr = () => {
         if (activeQrSession) {
@@ -76,42 +146,34 @@ export default function ScanQr({ activeQrSession }: Props) {
 
             <div className="py-12">
                 <div className="max-w-2xl mx-auto sm:px-6 lg:px-8 space-y-6">
-                    {/* Current Active QR Display */}
-                    {activeQrSession && (
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center justify-between">
-                                    <span className="flex items-center gap-2">
-                                        <QrCode className="h-6 w-6" />
-                                        Active QR Code
-                                    </span>
-                                    <span className={`text-sm font-mono ${timeLeft <= 5 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                                        {timeLeft}s
-                                    </span>
-                                </CardTitle>
-                                <CardDescription>
-                                    Current QR code - Auto refreshes every 15 seconds
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                                <div className="p-8 bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg text-center">
-                                    <div className="inline-flex items-center justify-center w-48 h-48 bg-white rounded-lg shadow-lg mb-4">
-                                        <QrCode className="h-32 w-32 text-primary" />
-                                    </div>
-                                    <p className="font-mono text-lg font-bold mb-2 break-all px-4">
-                                        {activeQrSession.token}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        Type: {activeQrSession.type}
-                                    </p>
-                                </div>
-                                <Button onClick={useCurrentQr} variant="outline" className="w-full">
-                                    <RefreshCw className="h-4 w-4 mr-2" />
-                                    Use This QR Code
+                    {/* QR Scanner Section */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Camera className="h-6 w-6" />
+                                Scan QR Code dengan Kamera
+                            </CardTitle>
+                            <CardDescription>
+                                Arahkan kamera ke QR code yang ditampilkan di layar display
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {!isScanning ? (
+                                <Button onClick={startScanner} className="w-full" size="lg">
+                                    <Camera className="h-5 w-5 mr-2" />
+                                    Buka Kamera untuk Scan
                                 </Button>
-                            </CardContent>
-                        </Card>
-                    )}
+                            ) : (
+                                <div className="space-y-4">
+                                    <div id="qr-reader" className="w-full"></div>
+                                    <Button onClick={stopScanner} variant="destructive" className="w-full">
+                                        <X className="h-5 w-5 mr-2" />
+                                        Tutup Kamera
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
                     {!activeQrSession && (
                         <Alert>

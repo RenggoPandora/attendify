@@ -18,14 +18,14 @@ class AttendanceController extends Controller
     ) {}
 
     /**
-     * HR Dashboard - Attendance monitoring.
+     * HR Dashboard & Attendance Management.
      */
     public function index(Request $request)
     {
         $date = $request->input('date', Carbon::today()->format('Y-m-d'));
         $departmentId = $request->input('department_id');
         
-        $query = Attendance::with(['user.department', 'user.role'])
+        $query = Attendance::with(['user.department', 'user.roles'])
             ->where('date', $date);
 
         if ($departmentId) {
@@ -47,7 +47,7 @@ class AttendanceController extends Controller
             'alpha' => $attendances->where('status', 'alpha')->count(),
         ];
 
-        return Inertia::render('Hr/Dashboard', [
+        return Inertia::render('Hr/Attendance', [
             'attendances' => $attendances,
             'departments' => $departments,
             'stats' => $stats,
