@@ -1,0 +1,124 @@
+import InputError from '@/components/input-error';
+import TextLink from '@/components/text-link';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import AuthLayout from '@/layouts/auth-layout';
+import { useForm, Head } from '@inertiajs/react';
+
+interface LoginProps {
+    status?: string;
+    canResetPassword: boolean;
+    canRegister: boolean;
+}
+
+export default function Login({
+    status,
+    canResetPassword,
+    canRegister,
+}: LoginProps) {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        email: '',
+        password: '',
+        remember: false,
+    });
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('login'), {
+            onFinish: () => reset('password'),
+        });
+    };
+
+    return (
+        <AuthLayout
+            title="Log in to your account"
+            description="Enter your email and password below to log in"
+        >
+            <Head title="Log in" />
+
+            <form
+                onSubmit={submit}
+                className="flex flex-col gap-6"
+            >
+                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <div className="grid gap-6">
+                    <div className="grid gap-2">
+                        <Label htmlFor="email">Email address</Label>
+                        <Input
+                            id="email"
+                            type="email"
+                            name="email"
+                            value={data.email}
+                            onChange={(e) => setData('email', e.target.value)}
+                            required
+                            autoFocus
+                            tabIndex={1}
+                            autoComplete="email"
+                            placeholder="email@example.com"
+                        />
+                        <InputError message={errors.email} />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <div className="flex items-center">
+                            <Label htmlFor="password">Password</Label>
+                            {canResetPassword && (
+                                <TextLink
+                                    href={route('password.request')}
+                                    className="ml-auto text-sm"
+                                    tabIndex={5}
+                                >
+                                    Forgot password?
+                                </TextLink>
+                            )}
+                        </div>
+                        <Input
+                            id="password"
+                            type="password"
+                            name="password"
+                            value={data.password}
+                            onChange={(e) => setData('password', e.target.value)}
+                            required
+                            tabIndex={2}
+                            autoComplete="current-password"
+                            placeholder="Password"
+                        />
+                        <InputError message={errors.password} />
+                    </div>
+
+                    <div className="flex items-center space-x-3">
+                        <Checkbox
+                            id="remember"
+                            name="remember"
+                            checked={data.remember}
+                            onCheckedChange={(checked) => setData('remember', checked as boolean)}
+                            tabIndex={3}
+                        />
+                        <Label htmlFor="remember">Remember me</Label>
+                    </div>
+
+                    <Button
+                        type="submit"
+                        className="mt-4 w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 h-11 font-medium"
+                        tabIndex={4}
+                        disabled={processing}
+                        data-test="login-button"
+                    >
+                        {processing && <Spinner />}
+                        Log in
+                    </Button>
+                </div>
+                </div>
+            </form>
+
+            {status && (
+                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                    {status}
+                </div>
+            )}
+        </AuthLayout>
+    );
+}

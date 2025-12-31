@@ -16,29 +16,34 @@ export default function VerifyEmail({ status }: { status?: string }) {
             <Head title="Email verification" />
 
             {status === 'verification-link-sent' && (
-                <div className="mb-4 text-center text-sm font-medium text-green-600">
+                <div className="mb-4 rounded-lg bg-green-50 border border-green-200 p-4 text-center text-sm font-medium text-green-700">
                     A new verification link has been sent to the email address
                     you provided during registration.
                 </div>
             )}
 
-            <Form {...send.form()} className="space-y-6 text-center">
-                {({ processing }) => (
-                    <>
-                        <Button disabled={processing} variant="secondary">
-                            {processing && <Spinner />}
-                            Resend verification email
-                        </Button>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <Form {...send.form()} className="space-y-6 text-center">
+                    {({ processing }) => (
+                        <>
+                            <Button
+                                disabled={processing}
+                                className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/30 h-11 font-medium"
+                            >
+                                {processing && <Spinner />}
+                                Resend verification email
+                            </Button>
 
-                        <TextLink
-                            href={logout()}
-                            className="mx-auto block text-sm"
-                        >
-                            Log out
-                        </TextLink>
-                    </>
-                )}
-            </Form>
+                            <TextLink
+                                href={logout()}
+                                className="mx-auto block text-sm text-blue-600 hover:text-blue-700 font-medium"
+                            >
+                                Log out
+                            </TextLink>
+                        </>
+                    )}
+                </Form>
+            </div>
         </AuthLayout>
     );
 }

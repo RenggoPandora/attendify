@@ -25,6 +25,7 @@ export default function Register() {
             >
                 {({ processing, errors }) => (
                     <>
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
                         <div className="grid gap-6">
                             <div className="grid gap-2">
                                 <Label htmlFor="name">Name</Label>
@@ -92,7 +93,7 @@ export default function Register() {
 
                             <Button
                                 type="submit"
-                                className="mt-2 w-full"
+                                className="mt-2 w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg shadow-blue-500/30 transition-all duration-300 h-11 font-medium"
                                 tabIndex={5}
                                 data-test="register-user-button"
                             >
@@ -100,10 +101,11 @@ export default function Register() {
                                 Create account
                             </Button>
                         </div>
+                        </div>
 
-                        <div className="text-center text-sm text-muted-foreground">
-                            Already have an account?{' '}
-                            <TextLink href={login()} tabIndex={6}>
+                        <div className="text-center text-sm">
+                            <span className="text-gray-600">Already have an account?</span>{' '}
+                            <TextLink href={login()} tabIndex={6} className="text-blue-600 hover:text-blue-700 font-medium">
                                 Log in
                             </TextLink>
                         </div>

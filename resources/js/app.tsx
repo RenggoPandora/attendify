@@ -2,10 +2,11 @@ import '../css/app.css';
 
 import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { StrictMode } from 'react';
+import { StrictMode, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
 import { route as ziggyRoute } from 'ziggy-js';
+import { SplashScreen } from './components/splash-screen';
 
 // Make Ziggy route helper available globally
 window.route = ziggyRoute;
@@ -24,12 +25,13 @@ createInertiaApp({
 
         root.render(
             <StrictMode>
+                <SplashScreen />
                 <App {...props} />
             </StrictMode>,
         );
     },
     progress: {
-        color: '#4B5563',
+        color: '#3B82F6', // Blue color for progress bar
     },
 });
 
